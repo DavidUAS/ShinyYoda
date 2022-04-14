@@ -1,0 +1,153 @@
+initial.age.selection <- 30
+age.slider <- function(){
+  sliderInput(
+    inputId = "age",
+    label = "Patient age in years", 
+    min = 16,
+    max = 100,
+    value = initial.age.selection,
+    ticks = F,
+    step = 1
+  )
+}
+
+initial.hb.selection <- 100
+hb.slider <- function(){
+  sliderInput(
+    inputId = "hb",
+    label = "Hb on admission", 
+    min = 1,
+    max = 200,
+    value = initial.hb.selection,
+    ticks = F,
+    step = 1
+  )
+}
+
+initial.motor.selection <- 4
+motor.slider <- function(){
+  sliderInput(
+    inputId = "motor",
+    label = "GCSm at admission", 
+    min = 1,
+    max = 6,
+    value = initial.motor.selection,
+    step = 1
+  )
+}
+
+initial.pupil.selection <- 3
+pupil.slider <- function(){
+  sliderInput(
+    inputId = "pupil",
+    label = "Pupillary reaction at admission", 
+    min = 1,
+    max = 3,
+    value = initial.pupil.selection,
+    step = 1
+  )
+}
+
+initial.length.selection <- 10
+length.slider <- function(){
+  sliderInput(
+    inputId = "length",
+    label = "Length of NICU stay", 
+    min = 1,
+    max = 50,
+    value = initial.length.selection,
+    step = 1
+  )
+}
+
+initial.motor2.selection <- 5
+motor2.slider <- function(){
+  sliderInput(
+    inputId = "motor2",
+    label = "GCSm on discharge", 
+    min = 1,
+    max = 6,
+    value = initial.motor2.selection,
+    step = 1
+  )
+}
+
+#plot.distribution <- function(probabilities){
+  #bar.color <- rep(ui.blue, 8)
+  #bar.color[which.max(probabilities)] <- ui.red
+  
+  #barplot(
+    #height = probabilities,
+    #names.arg = 1:8,
+    #xlab = "GOS-E",
+    #ylab = "Probability",
+    #col = bar.color
+  
+
+
+#generate.prediction.text <- function(prediction){
+  #prediction.numeric <- as.numeric(prediction)
+  #prediction.text <- as.character(prediction)
+  
+  #paste0(
+    #"GOS-E: ",
+    #prediction.numeric,
+    #"\n",
+    #prediction.text
+  
+
+
+ui <- fluidPage(
+  titlePanel("Shiny Yoda"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      h2(HTML("<u>Patient characteristics</u>")),
+      headerPanel(""),
+      age.slider(),
+      motor.slider(),
+      length.slider(),
+      hb.slider(),
+      pupil.slider(),
+      motor2.slider(),
+      
+    ),
+    
+    mainPanel(
+      #h2(HTML("<u>Probability distribution</u>")),
+      #plotOutput("plot"),
+      h2(HTML("<u>Predicted outcome</u>")),
+      verbatimTextOutput("predicted.outcome")
+    )
+  )
+)
+
+server <- function(input, output, session){
+  
+  age.reactive <- reactive(input$age)
+  motor.reactive <- reactive(input$motor)
+  pupils.reactive <- reactive(input$pupil)
+  length.reactive <- reactive(input$length)
+  motor2.reactive <- reactive(input$motor2)
+  hb.reactive <- reactive(input$hb)
+  
+  input.values <- reactive(
+    as.matrix(data.frame(
+      age = age.reactive()/100,
+      motor = motor.reactive()/10,
+      pupil = pupils.reactive()/3,
+      length = length.reactive()/100,
+      motor2 = motor2.reactive()/10,
+      hb = hb.reactive()/200
+    )
+    ))
+  
+  model.prediction <- reactive(
+    predict(model, input.values())
+  )
+  predicted.egos <- reactive(apply(model.prediction, 1, which.max))
+  
+  output$predicted.outcome <- renderText(predicted.egos())
+}
+
+shinyApp(ui = ui, server = server)
