@@ -1,3 +1,91 @@
+library(keras)
+library(tfdatasets)
+library(shiny)
+
+################NN-model
+
+train_file_path <- "train5.csv"                    
+test_file_path <- "test5.csv"
+
+train.data <- read.csv(train_file_path)
+
+train.data$eGOS <- train.data$eGOS - 1                                 ##### <-------- Python börjar räkna från 0. Så eGOS ska går från 0 - 7.
+
+train.data$motor <- train.data$motor /10
+train.data$pupil <- train.data$pupil / 3
+train.data$age <- train.data$age / 100
+train.data$hb <- train.data$hb /200
+train.data$length <- train.data$length /100
+train.data$motor2 <- train.data$motor2 / 10
+
+test.data <- read.csv(test_file_path)
+
+test.data$eGOS <- test.data$eGOS - 1
+
+test.data$motor <- test.data$motor /10
+test.data$pupil <- test.data$pupil / 3
+test.data$age <- test.data$age / 100
+test.data$hb <- test.data$hb /200
+test.data$length <- test.data$length /100
+test.data$motor2 <- test.data$motor2 / 10
+
+###################################### Formatting the training data
+train.features <- train.data[, c("motor", "pupil", "age", "hb", "length", "motor2")]
+train.x <- as.matrix(train.features)
+
+train.y <- to_categorical(train.data$eGOS, 8) # <--- antalet labels
+
+
+###################################### Formatting the testing data
+test.features <- test.data[, c("motor", "pupil", "age", "hb", "length", "motor2")]
+test.x <- as.matrix(test.features)
+
+test.y <- to_categorical(test.data$eGOS, 8) # <--- antalet labels
+
+#### dvs x = features och y = labels
+
+################################# Designing the network
+
+
+model <- keras_model_sequential() 
+model %>% 
+  layer_dense(units = 6, activation = 'relu', input_shape = c(6)) %>%  # <------- Input shape är antalet kolumner i train.x (antal features).
+  layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 6, activation = 'relu') %>%
+  layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 8, activation = 'softmax')
+
+summary(model)
+
+model %>% compile(loss = 'categorical_crossentropy', optimizer = optimizer_rmsprop(), metrics = c('accuracy'))
+
+################################# Training the network
+
+
+history <- model %>% fit(
+  train.x, train.y, 
+  epochs = 30, batch_size = 30, 
+  validation_split = 0.2
+)
+
+########################## testing model with novel data
+#motor=0.5
+#pupil=0.333333
+#age=0.15
+#hb=0.710
+#length=0.23
+#motor2=0.6
+
+#test.test <- as.matrix(data.frame(motor, pupil, age, length, hb, motor2))
+#probabilities.test <- predict(model, test.test)
+#predicted.egos <- apply(probabilities.test, 1, which.max)
+#predicted.egos
+
+######################### ShinyYoda
+
+ui.blue <- "#428bca"
+ui.red <- "red"
+
 initial.age.selection <- 30
 age.slider <- function(){
   sliderInput(
@@ -72,82 +160,90 @@ motor2.slider <- function(){
   )
 }
 
-#plot.distribution <- function(probabilities){
-  #bar.color <- rep(ui.blue, 8)
-  #bar.color[which.max(probabilities)] <- ui.red
+plot.distribution <- function(probabilities){
+  bar.color <- rep(ui.blue, 8)
+  bar.color[which.max(probabilities)] <- ui.red
   
-  #barplot(
-    #height = probabilities,
-    #names.arg = 1:8,
-    #xlab = "GOS-E",
-    #ylab = "Probability",
-    #col = bar.color
-  
-
-
-#generate.prediction.text <- function(prediction){
-  #prediction.numeric <- as.numeric(prediction)
-  #prediction.text <- as.character(prediction)
-  
-  #paste0(
-    #"GOS-E: ",
-    #prediction.numeric,
-    #"\n",
-    #prediction.text
-  
-
-
-ui <- fluidPage(
-  titlePanel("Shiny Yoda"),
-  
-  sidebarLayout(
-    sidebarPanel(
-      h2(HTML("<u>Patient characteristics</u>")),
-      headerPanel(""),
-      age.slider(),
-      motor.slider(),
-      length.slider(),
-      hb.slider(),
-      pupil.slider(),
-      motor2.slider(),
-      
-    ),
-    
-    mainPanel(
-      #h2(HTML("<u>Probability distribution</u>")),
-      #plotOutput("plot"),
-      h2(HTML("<u>Predicted outcome</u>")),
-      verbatimTextOutput("predicted.outcome")
-    )
+  barplot(
+    height = probabilities,
+    names.arg = 1:8,
+    xlab = "GOS-E",
+    ylab = "Probability",
+    col = bar.color
   )
-)
-
-server <- function(input, output, session){
-  
-  age.reactive <- reactive(input$age)
-  motor.reactive <- reactive(input$motor)
-  pupils.reactive <- reactive(input$pupil)
-  length.reactive <- reactive(input$length)
-  motor2.reactive <- reactive(input$motor2)
-  hb.reactive <- reactive(input$hb)
-  
-  input.values <- reactive(
-    as.matrix(data.frame(
-      age = age.reactive()/100,
-      motor = motor.reactive()/10,
-      pupil = pupils.reactive()/3,
-      length = length.reactive()/100,
-      motor2 = motor2.reactive()/10,
-      hb = hb.reactive()/200
-    )
-    ))
-  
-  model.prediction <- reactive(
-    predict(model, input.values())
-  )
-  predicted.egos <- reactive(apply(model.prediction, 1, which.max))
-  
-  output$predicted.outcome <- renderText(predicted.egos())
 }
 
-shinyApp(ui = ui, server = server)
+generate.prediction.text <- function(prediction){
+  prediction.numeric <- as.numeric(prediction)
+  prediction.text <- as.character(prediction)
+  
+  paste0(
+    "GOS-E: ",
+    prediction.numeric,
+    "\n",
+    prediction.text
+  )
+}   
+        
+        ui <- fluidPage(
+          titlePanel("Shiny Yoda"),
+          
+          sidebarLayout(
+            sidebarPanel(
+              h2(HTML("<u>Patient characteristics</u>")),
+              headerPanel(""),
+              age.slider(),
+              motor.slider(),
+              length.slider(),
+              hb.slider(),
+              pupil.slider(),
+              motor2.slider(),
+              
+            ),
+            
+            mainPanel(
+              h2(HTML("<u>Probability distribution</u>")),
+              plotOutput("plot"),
+              h2(HTML("<u>Predicted outcome</u>")),
+              verbatimTextOutput("predicted.outcome")
+            )
+          )
+        )
+        
+        server <- function(input, output, session){
+          
+          age.reactive <- reactive(input$age)
+          motor.reactive <- reactive(input$motor)
+          pupils.reactive <- reactive(input$pupil)
+          length.reactive <- reactive(input$length)
+          motor2.reactive <- reactive(input$motor2)
+          hb.reactive <- reactive(input$hb)
+          
+          input.values <- reactive(
+            as.matrix(data.frame(
+              age = age.reactive()/100,
+              motor = motor.reactive()/10,
+              pupil = pupils.reactive()/3,
+              length = length.reactive()/100,
+              motor2 = motor2.reactive()/10,
+              hb = hb.reactive()/200
+            )
+            ))
+          model.prediction <- reactive(
+            predict(model, input.values())
+          )
+          
+          model.probabilities <- reactive(
+            predict(model, input.values())
+          )
+          
+          output$plot <- renderPlot(
+            plot.distribution(model.probabilities())
+          )
+          
+          predicted.egos <- reactive(apply(model.prediction, 1, which.max))
+          
+          output$predicted.outcome <- renderText(predicted.egos())
+        }
+        
+        shinyApp(ui = ui, server = server)
