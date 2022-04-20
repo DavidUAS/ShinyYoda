@@ -43,8 +43,8 @@ for (i in 1:nrow(weighted.egos)){
   weighted.prediction[i] <- round(sum(weighted.egos[i, ]))
 }
 
-expansion.factor <- 1 / (4.5 - 1)
-expanded.predictions <- weighted.prediction + (weighted.prediction - 4.5) * expansion.factor
+expansion.factor <- 1 / (8 - 1)
+expanded.predictions <- weighted.prediction + (weighted.prediction - 8) * expansion.factor
 
 expanded.predictions <- round(expanded.predictions)
 expanded.predictions[expanded.predictions < 1] <- 1
