@@ -1,0 +1,248 @@
+library(MASS)
+library(shiny)
+
+#myapp5
+
+########## the.data2 <- readRDS("BabyYodaData.rds")
+train_file_path <- "train6.csv"
+the.data <- read.csv(train_file_path)
+
+
+the.data$eGOS <- as.ordered(the.data$eGOS)
+
+the.data$age <- as.numeric(the.data$age)
+the.data$motor <- as.numeric(the.data$motor)
+the.data$pupil <- as.numeric(the.data$pupil)
+the.data$length <- as.numeric(the.data$length)
+the.data$motor2 <- as.numeric(the.data$motor2)
+
+
+
+training.set <- the.data[1:700, ]
+test.set <- the.data[701:808, ]
+
+model <- polr(eGOS ~  age + motor + pupil + length + motor2, data = training.set, Hess = TRUE)
+#model <- polr(eGOS ~  Age, data = training.set, Hess = TRUE)
+
+summary(model)
+
+prediction.set <- cbind(test.set, predict(model, test.set))
+
+plot(prediction.set$`predict(model, test.set)`)
+
+probabilites <- predict(model, test.set, type = "p")
+
+original.predicted <- as.integer(predict(model, test.set))
+
+weighted.egos <- probabilites
+for (i in 1:8){
+  weighted.egos[, i] <- weighted.egos[, i] * i
+}
+weighted.prediction <- rep(NA, nrow(weighted.egos))
+for (i in 1:nrow(weighted.egos)){
+  weighted.prediction[i] <- round(sum(weighted.egos[i, ]))
+}
+
+expansion.factor <- 1 / (4.5 - 1)
+expanded.predictions <- weighted.prediction + (weighted.prediction - 4.5) * expansion.factor
+
+expanded.predictions <- round(expanded.predictions)
+expanded.predictions[expanded.predictions < 1] <- 1
+expanded.predictions[expanded.predictions > 8] <- 8
+
+predicted.egos <- as.integer(expanded.predictions)
+actual.egos <- as.integer(test.set$eGOS)
+
+plot(as.factor(expanded.predictions))
+
+original.mean.absolute.error <- sum((abs(original.predicted - actual.egos))) / length(actual.egos)
+adjusted.mean.absolute.error <- sum((abs(predicted.egos - actual.egos))) / length(actual.egos)
+
+original.mean.squared.error <- sum((original.predicted - actual.egos)^2) / length(actual.egos)
+adjusted.mean.squared.error <- sum((predicted.egos - actual.egos)^2) / length(actual.egos)
+
+
+######################### Testing on example novel data
+#age <- 15
+#motor <- 6
+#pupil <- 3
+#CT <- 2
+#hb <- 120
+#glucose <- 7
+#test.test <- as.matrix(data.frame(age, motor, pupil, CT, hb, glucose))
+#predict(model, test.test)
+
+ui.blue <- "#428bca"
+ui.red <- "red"
+
+initial.age.selection <- 30
+age.slider <- function(){
+  sliderInput(
+    inputId = "age",
+    label = "Patient age in years", 
+    min = 16,
+    max = 100,
+    value = initial.age.selection,
+    ticks = F,
+    step = 1
+  )
+}
+
+initial.length.selection <- 10
+length.slider <- function(){
+  sliderInput(
+    inputId = "length",
+    label = "Length of NICU stay", 
+    min = 0,
+    max = 100,
+    value = initial.length.selection,
+    ticks = F,
+    step = 1
+  )
+}
+
+initial.motor.selection <- 4
+motor.slider <- function(){
+  sliderInput(
+    inputId = "motor",
+    label = "GCSm at admission", 
+    min = 1,
+    max = 6,
+    value = initial.motor.selection,
+    step = 1
+  )
+}
+
+initial.pupil.selection <- 3
+pupil.slider <- function(){
+  sliderInput(
+    inputId = "pupil",
+    label = "Pupillary reaction at admission", 
+    min = 1,
+    max = 3,
+    value = initial.pupil.selection,
+    step = 1
+  )
+}
+
+initial.motor2.selection <- 1
+motor2.slider <- function(){
+  sliderInput(
+    inputId = "motor2",
+    label = "GCS-motor at discharge", 
+    min = 1,
+    max = 6,
+    value = initial.motor2.selection,
+    step = 1
+  )
+}
+
+
+plot.distribution <- function(probabilities){
+  bar.color <- rep(ui.blue, 8)
+  bar.color[which.max(probabilities)] <- ui.red
+  
+  barplot(
+    height = probabilities,
+    names.arg = 1:8,
+    xlab = "GOS-E",
+    ylab = "Probability",
+    col = bar.color
+  )
+}
+
+generate.prediction.text <- function(prediction){
+  prediction.numeric <- as.numeric(prediction)
+  prediction.text <- as.character(prediction)
+  
+  paste0(
+    "GOS-E: ",
+    prediction.numeric,
+    "\n",
+    prediction.text
+  )
+}
+
+ui <- fluidPage(
+  titlePanel("Shiny Yoda"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      h2(HTML("<u>Patient characteristics</u>")),
+      headerPanel(""),
+      age.slider(),
+      motor.slider(),
+      pupil.slider(),
+      length.slider(),
+      motor2.slider(),
+      
+    ),
+    
+    mainPanel(
+      h2(HTML("<u>Probability distribution</u>")),
+      plotOutput("plot"),
+      h2(HTML("<u>Predicted outcome</u>")),
+      verbatimTextOutput("predicted.outcome")
+    )
+  )
+)
+
+server <- function(input, output, session){
+  
+  age.reactive <- reactive(input$age)
+  motor.reactive <- reactive(input$motor)
+  pupils.reactive <- reactive(input$pupil)
+  length.reactive <- reactive(input$length)
+  motor2.reactive <- reactive(input$motor2)
+  
+  input.values <- reactive(
+    data.frame(
+      age = age.reactive(),
+      motor = as.integer(motor.reactive()),
+      pupil = as.integer(pupils.reactive()),
+      length = as.integer(length.reactive()),
+      motor2 = as.integer(motor2.reactive())
+    )
+  )
+  
+  
+  original.predicted <- as.integer(predict(model, test.set))
+
+  model.prediction <- reactive(
+    predict(model, input.values())
+  )
+  
+  #model.probabilities <- reactive(
+  #  predict(model, input.values(), type = "p")
+  #)
+  
+  weighted.egos <- reactive(predict(model, input.values(), type = "p"),
+  for (i in 1:8){
+    weighted.egos()[, i] <- weighted.egos()[, i] * i
+  })
+  
+  weighted.prediction <- reactive(rep(NA, nrow(weighted.egos())),
+  for (i in 1:nrow(weighted.egos())){
+    weighted.prediction()[i] <- round(sum(weighted.egos()[i, ]))
+  })
+  
+  expansion.factor <- 1 / (4.5 - 1)
+  expanded.predictions <- reactive(weighted.prediction + (weighted.prediction - 4.5) * expansion.factor)
+  
+  expanded.predictions <- round(expanded.predictions)
+  expanded.predictions[expanded.predictions < 1] <- 1
+  expanded.predictions[expanded.predictions > 8] <- 8
+  
+  predicted.egos <- reactive(as.integer(expanded.predictions()))
+  
+  
+  output$plot <- renderPlot(
+    plot.distribution(predicted.egos())
+  )
+  
+  
+  #output$predicted.outcome <- renderText(model.prediction())
+  output$predicted.outcome <- renderText(generate.prediction.text(predicted.egos()))
+}
+
+shinyApp(ui = ui, server = server)
