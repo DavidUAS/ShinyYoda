@@ -1,0 +1,76 @@
+library(ggplot2)
+library(cowplot)
+library(randomForest)
+
+data_file_path <- "train6.csv"
+data <- read.csv(data_file_path)
+
+data[data$pupil == 1,]$pupil <- "Both reacting"
+data[data$pupil == 2,]$pupil <- "One reacting"
+data[data$pupil == 3,]$pupil <- "None reacting"
+
+data[data$eGOS == 1,]$eGOS <- "eGOS 1"
+data[data$eGOS == 2,]$eGOS <- "eGOS 2"
+data[data$eGOS == 3,]$eGOS <- "eGOS 3"
+data[data$eGOS == 4,]$eGOS <- "eGOS 4"
+data[data$eGOS == 5,]$eGOS <- "eGOS 5"
+data[data$eGOS == 6,]$eGOS <- "eGOS 6"
+data[data$eGOS == 7,]$eGOS <- "eGOS 7"
+data[data$eGOS == 8,]$eGOS <- "eGOS 8"
+
+data$eGOS <- as.factor(data$eGOS)
+data$age <- as.numeric(data$age)
+data$pupil <- as.factor(data$pupil)
+data$motor <- as.factor(data$motor)
+data$length <- as.numeric(data$length)
+data$motor2 <- as.factor(data$motor2)
+
+#str(data)
+#head(data)
+
+set.seed(42) #Saving the random seed of the model
+
+############################ Imputing any missing data
+#data.imputed <- rfImpute(eGOS ~ ., data = data, iter=4)
+# model <- randomForest(eGOS ~ ., data=data.imputed, proximity=TRUE)
+
+
+########################### Creating the model
+model <- randomForest(eGOS ~., data=data, ntree=500, mtry=1, proximity=TRUE)
+# ntree = number of trees in model, default=500
+# mtry = number of variables at each split, default=sqrt of input variables
+
+model
+
+######################### Classifying error rate
+# model$err.rate <- error rate of each decision tree / outcome
+oob.error.data <- data.frame(
+  Trees=rep(1:nrow(model$err.rate), time=3),
+  Type=rep(c("OOB", "eGOS 1", "eGOS 2", "eGOS 3", "eGOS 4", "eGOS 5", "eGOS 6", "eGOS 7", "eGOS 8"), each=nrow(model$err.rate)),
+  Error=c(model$err.rate[, "OOB"],
+          model$err.rate[, "eGOS 1"],
+          model$err.rate[, "eGOS 2"],
+          model$err.rate[, "eGOS 3"],
+          model$err.rate[, "eGOS 4"],
+          model$err.rate[, "eGOS 5"],
+          model$err.rate[, "eGOS 6"],
+          model$err.rate[, "eGOS 7"],
+          model$err.rate[, "eGOS 8"]))
+
+######################## Plotting the error rates data
+ggplot(data=oob.error.data, aes(x=Trees, y=Error)) +
+  geom_line(aes(color=Type))
+
+######################## Modifying the forest ################################################################
+
+######## Changing the number of trees in model (ntree= X), default = 500
+
+######## Changing the number of variables at each split (mtry=x), default=sqrt of input variables ###
+######## Code for checking the mtry value with the least error rate:
+oob.values <- vector(length=10)
+for(i in 1:10) {
+  temp.model <- randomForest(eGOS ~ ., data=data, mtry=i, ntree=1000)
+  oob.values[i] <- temp.model$err.rate[nrow(temp.model$err.rate),1]
+}
+head(oob.values)
+which.min(oob.values)
