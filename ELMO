@@ -1,0 +1,41 @@
+library(ordinalNet)
+
+train_file_path <- "train6.csv"
+data <- read.csv(train_file_path)
+
+
+data$eGOS <- as.ordered(data$eGOS)
+
+data$age <- as.numeric(data$age)
+data$motor <- as.numeric(data$motor)
+data$pupil <- as.numeric(data$pupil)
+data$length <- as.numeric(data$length)
+data$motor2 <- as.numeric(data$motor2)
+
+#str(the.data)
+#summary(the.data)
+
+#train.data <- the.data[1:600, ]
+#test.data <- the.data[601:808, ]
+
+ind <- sample(2, nrow(data), replace=TRUE, prob = c(0.8, 0.2))
+train.data <- data[ind==1,]
+test.data <- data[ind==2,]
+
+
+train.dataframe <- train.data[, c("motor", "pupil", "age", "length", "motor2")]
+x.train <- matrix(as.numeric(unlist(train.dataframe)), nrow = nrow(train.dataframe))
+
+test.dataframe <- test.data[, c("motor", "pupil", "age", "length", "motor2")]
+x.test <- matrix(as.numeric(unlist(test.dataframe)), nrow = nrow(test.dataframe))
+
+train.lable <- as.numeric(train.data$eGOS)
+y.train <- matrix(as.numeric(unlist(train.lable)), nrow = nrow(train.lable))
+
+test.lable <- test.data[, c("eGOS")]
+y.test <- matrix(as.numeric(unlist(test.lable)), nrow = nrow(test.lable))
+
+alpha0.fit <- ordinalNet(x = x.train, y = y.train, alpha=0, family=c("cumulative"))
+
+
+summary(model)
