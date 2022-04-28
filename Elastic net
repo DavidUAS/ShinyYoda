@@ -1,0 +1,94 @@
+library(glmnet)
+library(ggplot2)
+
+data_file_path <- "train6.csv"
+data <- read.csv(data_file_path)
+
+
+set.seed(42)
+
+################################### Sample data
+
+train.data <- data[1:600, ]
+test.data <- data[601:808, ]
+
+train.features <- train.data[, c("motor", "pupil", "age", "length", "motor2")]
+x.train <- as.matrix(train.features)
+
+test.features <- test.data[, c("motor", "pupil", "age", "length", "motor2")]
+x.test <- as.matrix(test.features)
+
+train.lable <- train.data[, c("eGOS")]
+y.train <- as.matrix(train.lable)
+
+test.lable <- test.data[, c("eGOS")]
+y.test <- as.matrix(test.lable)
+
+
+
+######################## Ridge regression (alpha = 0)
+
+alpha0.fit <- cv.glmnet(x.train, y.train, type.measure="mse",
+                        alpha=0, family="gaussian")
+
+alpha0.predicted <-
+  predict(alpha0.fit, s=alpha0.fit$lambda.1se, newx=x.test) #lambda.1se = optimal value for lambda in alpha0.fit
+
+mean((y.test - alpha0.predicted)^2) #MSE for ridge regression
+
+
+
+######################## Lasso regression (alpha = 1)
+alpha1.fit <- cv.glmnet(x.train, y.train, type.measure="mse",
+                        alpha=1, family="gaussian")
+
+alpha1.predicted <-
+  predict(alpha1.fit, s=alpha1.fit$lambda.1se, newx=x.test)
+
+mean((y.test - alpha1.predicted)^2) #MSE for lasso regression
+
+# Compare MSE to see which is best
+
+
+####################### Elastic net regression (alpha = 0.5)
+
+alpha0.5.fit <- cv.glmnet(x.train, y.train, type.measure="mse",
+                         alpha=0.5, family="gaussian")
+
+alpha0.5.predicted <-
+  predict(alpha0.5.fit, s=alpha0.5.fit$lambda.1se, newx=x.test)
+
+mean((y.test - alpha0.5.predicted)^2)
+
+# Compare MSE of each three
+
+###################### Finding optimal alpha value from 0.0 to 1.0 (combination of lasso and ridge regression)
+
+list.of.fits <- list()
+for (i in 0:10) {
+  fit.name <- paste0("alpha", i/10) #creates names of alpha 0/10=0 to 1/10=1
+  
+  list.of.fits[[fit.name]] <-
+    cv.glmnet(x.train, y.train, type.measure = "mse", alpha=i/10,
+              family="gaussian")
+}
+
+results <- data.frame()
+for (i in 0:10) {
+  fit.name <- paste0("alpha", i/10)
+  
+  predicted <-
+    predict(list.of.fits[[fit.name]],
+            s=list.of.fits[[fit.name]]$lambda.1se, newx=x.test)
+  
+  mse <- mean((y.test - predicted)^2)
+  
+  temp <- data.frame(alpha=i/10, mse=mse, fit.name=fit.name)
+  results <- rbind(results, temp)
+}
+
+results
+
+
+eGOS <- round(predict(alpha0.5.fit, x.test))
+head(eGOS)
