@@ -1,4 +1,6 @@
 library(ordinalNet)
+library(glmnet)
+library(ggplot2)
 
 train_file_path <- "train6.csv"
 data <- read.csv(train_file_path)
@@ -24,18 +26,201 @@ test.data <- data[ind==2,]
 
 
 train.dataframe <- train.data[, c("motor", "pupil", "age", "length", "motor2")]
-x.train <- matrix(as.numeric(unlist(train.dataframe)), nrow = nrow(train.dataframe))
+x.train <- as.matrix(train.dataframe)
 
 test.dataframe <- test.data[, c("motor", "pupil", "age", "length", "motor2")]
-x.test <- matrix(as.numeric(unlist(test.dataframe)), nrow = nrow(test.dataframe))
+x.test <- as.matrix(test.dataframe)
 
-train.lable <- as.numeric(train.data$eGOS)
-y.train <- matrix(as.numeric(unlist(train.lable)), nrow = nrow(train.lable))
+#train.lable <- as.numeric(train.data$eGOS)
+y.train <- train.data$eGOS
 
-test.lable <- test.data[, c("eGOS")]
-y.test <- matrix(as.numeric(unlist(test.lable)), nrow = nrow(test.lable))
+#test.lable <- as.numeric(test.data$eGOS)
+y.test <- test.data$eGOS
+numeric.y.test <- as.numeric(y.test) # y.test needs to be numeric for MSE
 
-alpha0.fit <- ordinalNet(x = x.train, y = y.train, alpha=0, family=c("cumulative"))
+######################## Ridge regression (alpha = 0)
+
+alpha0.fit <- ordinalNet(x.train, y.train, alpha=0, family=c("cumulative"))
+
+alpha0.predicted <- predict(alpha0.fit, x.test)
+
+original.egos.0 <- alpha0.predicted
+for (i in 1:8){
+  original.egos.0[, i] <- original.egos.0[, i] * i
+}
+
+original.prediction.0 <- rep(NA, nrow(original.egos.0))
+
+for (i in 1:nrow(original.egos.0)){
+  original.prediction.0[i] <- round(sum(original.egos.0[i, ]))
+}
+
+head(original.prediction.0)
+MSE.0 <- mean((numeric.y.test - original.prediction.0)^2)
+MAE.0 <- mean(abs(numeric.y.test - original.prediction.0))
+
+######################## Lasso regression (alpha = 1)
+
+alpha1.fit <- ordinalNet(x.train, y.train, alpha=1, family=c("cumulative"))
+
+alpha1.predicted <- predict(alpha1.fit, x.test)
+
+original.egos.1 <- alpha1.predicted
+for (i in 1:8){
+  original.egos.1[, i] <- original.egos.1[, i] * i
+}
+
+original.prediction.1 <- rep(NA, nrow(original.egos.1))
+
+for (i in 1:nrow(original.egos.1)){
+  original.prediction.1[i] <- round(sum(original.egos.1[i, ]))
+}
+
+head(original.prediction.1)
+MSE.1 <- mean((numeric.y.test - original.prediction.1)^2)
+MAE.1 <- mean(abs(numeric.y.test - original.prediction.1))
+
+####################### Elastic net regression (alpha = 0.5)
+
+alpha0.5.fit <- ordinalNet(x.train, y.train, alpha=0.5, family=c("cumulative"))
+
+alpha0.5.predicted <- predict(alpha0.5.fit, x.test)
+
+original.egos.0.5 <- alpha0.5.predicted
+for (i in 1:8){
+  original.egos.0.5[, i] <- original.egos.0.5[, i] * i
+}
+
+original.prediction.0.5 <- rep(NA, nrow(original.egos.0.5))
+
+for (i in 1:nrow(original.egos.0.5)){
+  original.prediction.0.5[i] <- round(sum(original.egos.0.5[i, ]))
+}
+
+head(original.prediction.0.5)
+MSE.0.5 <- mean((numeric.y.test - original.prediction.0.5)^2)
+MAE.0.5 <- mean(abs(numeric.y.test - original.prediction.0.5))
+
+###################### Finding optimal alpha value from 0.0 to 1.0 (combination of lasso and ridge regression) OBS Funkar ej 
+
+list.of.fits <- list()
+for (i in 0:10) {
+  fit.name <- paste0("alpha", i/10) #creates names of alpha 0/10=0 to 1/10=1
+  alpha0.fit <- ordinalNet(x.train, y.train, alpha=i/10, family=c("cumulative"))
+  
+}
+
+results <- data.frame()
+for (i in 0:10) {
+  fit.name <- paste0("alpha", i/10)
+  
+  predicted <-
+    predict(list.of.fits[[fit.name]], x=x.test)
+  
+  mse <- mean((numeric.test.y - predicted)^2)
+  
+  temp <- data.frame(alpha=i/10, mse=mse, fit.name=fit.name)
+  results <- rbind(results, temp)
+}
+
+results
 
 
-summary(model)
+###################### Example of probability to prediction
+
+weighted.egos <- alpha0.predicted
+for (i in 1:8){
+  weighted.egos[, i] <- weighted.egos[, i] * i
+}
+
+weighted.prediction <- rep(NA, nrow(weighted.egos))
+
+for (i in 1:nrow(weighted.egos)){
+  weighted.prediction[i] <- round(sum(weighted.egos[i, ]))
+}
+
+head(weighted.prediction)
+
+numeric.test.y <- as.numeric(y.test)
+MSE <- mean((numeric.test.y - weighted.prediction)^2)
+MAE <- mean(abs(numeric.test.y - weighted.prediction))
+
+
+##################################### Create confusion matrix
+
+library(ggplot2)
+library(reshape)
+
+source("ConfusionMatrix_Count.R")
+source("ConfusionMatrix_Normalize.R")
+source("ConfusionMatrix_Plot.R")
+source("ConfusionMatrix_GOSE.R")
+
+actual.egos <- as.integer(y.test)
+predicted.egos <- as.integer(original.prediction.1)
+
+confusion.matrix <- ConfusionMatrix_GOSE(actual.egos, predicted.egos)
+confusion.matrix$Graph
+
+#######################  ROC and AUC for unfavourable / mortality
+library(pROC)
+
+AUC.data <- predict(alpha1.fit, x.test)
+prob.unfavourable <- rep(NA,nrow(AUC.data))
+for(i in 1:nrow(AUC.data)){
+  prob.sum <- sum(AUC.data[i, 1:4])
+  prob.unfavourable[i] <- prob.sum
+}
+prob.favourable <- 1-prob.unfavourable
+
+true.AUC.data <- as.numeric(y.test)
+was.unfavourable <- true.AUC.data <=4
+was.favourable <- !was.unfavourable
+
+
+AUC.data <- predict(alpha1.fit, x.test)
+prob.mortality <- rep(NA,nrow(AUC.data))
+for(i in 1:nrow(AUC.data)){
+  prob.sum <- sum(AUC.data[i, 1])
+  prob.mortality[i] <- prob.sum
+}
+
+true.AUC.data.mortality <- as.numeric(y.test)
+was.mortality <- true.AUC.data.mortality ==1
+
+
+ROC.mortality <- roc(predictor = prob.mortality, response = was.mortality)
+
+
+ROC.unfavourable <- roc(predictor = prob.unfavourable, response = was.unfavourable)
+
+plot(ROC.unfavourable)
+AUC.unfavorable <- auc(ROC.unfavourable)
+
+plot(ROC.mortality)
+AUC.mortality <- auc(ROC.mortality)
+
+######################## Expansion prediction
+library(MASS)
+
+expansion.factor <- 1 / (8 - 1)
+expanded.predictions.1 <- original.prediction.1 + (original.prediction.1 - 8) * expansion.factor
+
+expanded.predictions.1 <- round(expanded.predictions.1)
+expanded.predictions.1[expanded.predictions.1 < 1] <- 1
+expanded.predictions.1[expanded.predictions.1 > 8] <- 8
+
+predicted.egos.1 <- as.integer(expanded.predictions.1)
+
+plot(as.factor(expanded.predictions.1))
+
+original.mean.absolute.error <- sum((abs(original.prediction.1 - y.test))) / length(y.test)
+adjusted.mean.absolute.error <- sum((abs(predicted.egos.1 - y.test))) / length(y.test)
+
+original.mean.squared.error <- sum((original.prediction.1 - y.test)^2) / length(y.test)
+adjusted.mean.squared.error <- sum((predicted.egos.1 - y.test)^2) / length(y.test)
+
+
+MSE.original.1 <- mean((numeric.y.test - original.prediction.1)^2)
+MSE.adjusted.1 <- mean((numeric.y.test - predicted.egos.1)^2)
+MAE <- mean(abs(numeric.y.test - weighted.prediction))
