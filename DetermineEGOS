@@ -1,0 +1,161 @@
+DetermineEgos <- function(data.row) {
+  reply.q.1 <- data.row["F16Q1..."]
+  if (reply.q.1 == "0"){
+    return(2)
+    }
+  reply.q.2c <- data.row["F16Q2c..."]
+  if (reply.q.2c == "0") go to 2a
+  if (reply.q.2c == "1") go to 3b
+}
+
+
+
+1
+Is the head injured person able to obey simple commands, or
+say any words?
+DB Name: [ Q01 ]
+Code Group: 558
+0 - No → GOSE 2
+1 - Yes → Go to 2c
+
+2c
+Was assistance at home essential before the injury?
+DB Name: [ Q02c ]
+Code Group: 558
+0 - No → go to 2a
+1 - Yes → go to 3b
+
+2a
+Is assistance essential every day for some activities of daily
+living?
+DB Name: [ Q02a ]
+Code Group: 558
+0 - No → Go to 3b
+1 - Yes → Go to 2b
+
+2b
+Do they need frequent help around the home most of the time?
+DB Name: [ Q02b ]
+Code Group: 558
+0 - No → GOSE 4
+1 - Yes → GOSE 3
+
+3b
+Were they able to shop without assistance before the injury?
+DB Name: [ Q03b ]
+Code Group: 558
+0 - No → go to 4b
+1 - Yes → go to 3a
+
+3a
+Are they able to shop without assistance?
+DB Name: [ Q03a ]
+Code Group: 558
+0 - No → GOSE 4
+1 - Yes → go to 4b
+
+4b
+Were they able to travel without assistance before the injury?
+DB Name: [ Q04b ]
+Code Group: 558
+0 - No → go to 5c
+1 - Yes → go to 4a
+
+4a
+Are they able to travel locally without assistance?
+DB Name: [ Q04a ]
+Code Group: 558
+0 - No → GOSE 4
+1 - Yes → go to 5
+
+
+
+5c
+Were they either working or seeking employment before the
+injury?
+DB Name: [ Q05c ]
+Code Group: 558
+0 - No → go to 6c
+1 - Yes → go to 5a
+
+5a
+Are they currently able to work to their previous capacity?
+DB Name: [ Q05a ]
+Code Group: 558
+0 - No → go to 5b
+1 - Yes → go to 6c
+
+5b
+How restricted are they?
+DB Name: [ Q05b ]
+Code Group: 600
+1 - Reduced work capacity → GOSE 6
+2 - Able to work only in a sheltered workshop or non-competitive job, or
+currently unable to work → GOSE 5
+
+6c
+Did they engage in social activities outside home before the
+injury?
+DB Name: [ Q06c ]
+Code Group: 558
+0 - No → go to 7a
+1 - Yes → go to 6a
+
+6a
+Are they able to resume regular social and leisure activities
+outside home?
+DB Name: [ Q06a ]
+Code Group: 558
+0 - No → go to 6b
+1 - Yes → go to 7c
+
+6b
+What is the extent of the restriction on their social and leisure
+activities?
+DB Name: [ Q06b ]
+Code Group: 601
+1 - Participate a bit less: at least half as often as before injury. → GOSE 7
+2 - Participate much less: less than half as often. → GOSE 6
+3 - Unable to participate: rarely, if ever, take part. → GOSE 5
+
+7c
+Were there problems with family or friends before the injury?
+DB Name: [ Q07c ]
+Code Group: 558
+0 - No → go to 7a
+1 - Yes → go to 8a
+
+7a
+Have there been psych problems resulting in ongoing family
+disruption?
+DB Name: [ Q07a ]
+Code Group: 558
+0 - No → go to 8b
+1 - Yes → go to 7b
+
+7b
+
+What has been the extent of the disruptions or strain?
+DB Name: [ Q07b ]
+
+1 - Occasional - less than weekly → GOSE 7
+2 - Frequent - once a week or more, but tolerable. → GOSE 6
+3 - Constant - daily and intolerable. → GOSE 5
+
+8b
+Were similar problems present before the injury?
+DB Name: [ Q08b ]
+Code Group: 558
+0 - No → go to 8a
+1 - Yes → GOSE 8
+
+8a
+Are there any other current problems relating to the injury which
+affect daily life?
+DB Name: [ Q08a ]
+Code Group: 558
+0 - No → GOSE 8
+1 - Yes → GOSE 7
+
+
+
