@@ -1,15 +1,24 @@
 DetermineEgos <- function(data.row) {
-  reply.q.1 <- data.row["F16Q1..."]
+  reply.q.1 <- data.row["F16Q1"]
   if (reply.q.1 == "0"){
     return(2)
     }
-  reply.q.2c <- data.row["F16Q2c..."]
+  reply.q.2c <- data.row["F16Q2c"]
   if (reply.q.2c == "0") go to 2a
   if (reply.q.2c == "1") go to 3b
+  reply.q.2a <- data.row["F16Q2a"]
+  if (reply.q.2a == "0") go to 3a
+  if (reply.q.2a == "1") go to 2b
+  reply.q.2b <- data.row["F16Q2b"]
+  if (reply.q.2b == "0") {
+    return(4)
+  if (reply.q.2b == "1") {
+    return(3)
+    }
 }
 
 
-
+###########################################################
 1
 Is the head injured person able to obey simple commands, or
 say any words?
