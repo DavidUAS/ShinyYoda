@@ -1,22 +1,104 @@
 DetermineEgos <- function(data.row) {
+  # 1 Is the head injured person able to obey simple commands, or say any words?
   reply.q.1 <- data.row["F16Q1"]
   if (reply.q.1 == "0"){
     return(2)
     }
+  # 2c Was assistance at home essential before the injury?
   reply.q.2c <- data.row["F16Q2c"]
-  if (reply.q.2c == "0") go to 2a
-  if (reply.q.2c == "1") go to 3b
-  reply.q.2a <- data.row["F16Q2a"]
-  if (reply.q.2a == "0") go to 3a
-  if (reply.q.2a == "1") go to 2b
-  reply.q.2b <- data.row["F16Q2b"]
-  if (reply.q.2b == "0") {
-    return(4)
-  if (reply.q.2b == "1") {
-    return(3)
-    }
-}
+  if (reply.q.2c == "0"){
+    # 2a Is assistance essential every day for some activities of daily living?
+    reply.q.2a <- data.row["F16Q2a"]
+    if (reply.q.2a == "1")
+      # 2b Do they need frequent help around the home most of the time?
+      reply.q.2b <- data.row["F16Q2b"]
+      if (reply.q.2b == "0"){
+        return(4)
+        }
+        else{
+          return(3)
+          }
+  # 3b Were they able to shop without assistance before the injury?
+  reply.q.3b <- data.row["F16Q3b"]
+  if (reply.q.3b == "1"){
+    # 3a Are they able to shop without assistance?
+    reply.q.3a <- data.row["F16Q3a"]
+    if (reply.q.3a == "0"){
+      return(4)
+      }
+  # 4b Were they able to travel without assistance before the injury?
+  reply.q.4b <- data.row["F16Q4b"]
+  if (reply.q.4b == "1"){
+     # 4a Are they able to travel locally without assistance?
+     reply.q.4a <- data.row["F16Q4a"]
+     if (reply.q.4a == "0"){
+      return(4)
+      }
+  # 5c Were they either working or seeking employment before the injury?
+  reply.q.5c <- data.row["F16Q5c"]
+  if (reply.q.5c == "1"){
+    # 5a Are they currently able to work to their previous capacity?
+    reply.q.5a <- data.row["F16Q5a"]
+    if (reply.q.5a == "0"){
+      # 5b How restricted are they?
+      reply.q.5b <- data.row["F16Q5b"]
+      if (reply.q.5b == "1"){
+        return(6)
+        }
+        else{
+          return(5)
+          }
+  # 6c Did they engage in social activities outside home before the injury?
+  reply.q.6c <- data.row["F16Q6c"]
+  if (reply.q.6c == "1"){
+    # 6a Are they able to resume regular social and leisure activities outside home?
+    reply.q.6a <- data.row["F16Q6a"]
+    if (reply.q.6a == "0"){
+      # 6b What is the extent of the restriction on their social and leisure activities?
+      reply.q.6b <- data.row["F16Q6b"]
+      if (reply.q.6b == "1"){
+        return(7)
+        }
+        if (reply.q.6b == "2"){
+          return(6)
+          }
+        else{
+          return(5)
+          }
+  # 7c Were there problems with family or friends before the injury?
+  reply.q.7c <- data.row["F16Q7c"]
+  if (reply.q.7c == "0"){
+    # 7a Have there been psych problems resulting in ongoing family disruption?
+    reply.q.7a <- data.row["F16Q7a"]
+    if (reply.q.7a == "1"){
+      # 7b What has been the extent of the disruptions or strain?
+      reply.q.7b <- data.row["F16Q7b"]
+      if (reply.q.7b == "1"){
+        return(7)
+        }
+        if (reply.q.6b == "2"){
+          return(6)
+          }
+        else{
+          return(5)
+          }
+  # 8b Were similar problems present before the injury?
+  reply.q.8b <- data.row["F16Q8b"]
+  if (reply.q.8b == "0"){
+    # 8a Are there any other current problems relating to the injury which affect daily life?
+    reply.q.8a <- data.row["F16Q8a"]
+    if (reply.q.8a == "1"){
+      return(7)
+      }
+      else{
+        return(8)
+        }
+    else{
+      return(8)
+      }
 
+}
+ 
 
 ###########################################################
 1
@@ -75,7 +157,7 @@ Are they able to travel locally without assistance?
 DB Name: [ Q04a ]
 Code Group: 558
 0 - No → GOSE 4
-1 - Yes → go to 5
+1 - Yes → go to 5c
 
 
 
@@ -107,7 +189,7 @@ Did they engage in social activities outside home before the
 injury?
 DB Name: [ Q06c ]
 Code Group: 558
-0 - No → go to 7a
+0 - No → go to 7c
 1 - Yes → go to 6a
 
 6a
@@ -132,7 +214,7 @@ Were there problems with family or friends before the injury?
 DB Name: [ Q07c ]
 Code Group: 558
 0 - No → go to 7a
-1 - Yes → go to 8a
+1 - Yes → go to 8b
 
 7a
 Have there been psych problems resulting in ongoing family
